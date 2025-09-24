@@ -92,7 +92,21 @@
 pip install -r requirements.txt
 ```
 
-`.env` に Azure / OpenAI 系認証情報を設定し、ネットワーク到達性を確認します。
+ルート直下にある `.env.example` をコピーして自分の秘密情報を記入してください:
+
+```bash
+cp .env.example .env
+```
+
+`.env` に Azure / OpenAI 系認証情報を設定し、ネットワーク到達性を確認します。`/Users/<あなたのユーザ名>/...` のような絶対パスは **共有用ドキュメントには記載せず**、以下のいずれかの汎用表現を推奨します。
+
+| ローカル固有記述例 | 推奨する汎用化表現 | 備考 |
+| ------------------ | ------------------ | ---- |
+| `/Users/yourname/projects/MatPlotAgent` | `$(pwd)` または `<project-root>` | ルートディレクトリ参照 |
+| `/Users/yourname/.pyenv/versions/...` | `$HOME/.pyenv/versions/...` | ユーザ名秘匿 |
+| 結果出力先: `/Users/yourname/tmp/runs` | `./runs` | 相対パスで再現性向上 |
+
+> NOTE: ログ出力等に実行環境のフルパスが埋め込まれる場合、公開前にパス名に個人名や社名が含まれていないか確認してください。
 
 ### 2. ベンチマーク指示セット
 
@@ -159,10 +173,10 @@ python compare_models.py --dry_run --workspace ./compare_workspace
 
 ### 8. 再現性メモ
 
--   乱数: 指示によっては seed 指定を促し安定性確保
--   Temperature: グローバル 0（非対応モデルは送信自体を除外）
--   サイレントフォールバック禁止: 失敗は失敗として可視化（空白タイル等）
--   画像サイズ/配置一定: モザイクレイアウト安定
+- 乱数: 指示によっては seed 指定を促し安定性確保
+- Temperature: グローバル 0（非対応モデルは送信自体を除外）
+- サイレントフォールバック禁止: 失敗は失敗として可視化（空白タイル等）
+- 画像サイズ/配置一定: モザイクレイアウト安定
 
 ### 9. モデル追加手順
 
@@ -186,9 +200,9 @@ python compare_models.py --dry_run --workspace ./compare_workspace
 
 ## 🔮 今後追加を検討している拡張
 
--   失敗時プレースホルダ PNG（モデル名＋エラー短縮表示）
--   実行ログ JSONL (`model, example_id, phase, status, error`)
--   同一失敗パターン連続時の早期打ち切りヒューリスティック
+- 失敗時プレースホルダ PNG（モデル名＋エラー短縮表示）
+- 実行ログ JSONL (`model, example_id, phase, status, error`)
+- 同一失敗パターン連続時の早期打ち切りヒューリスティック
 -   改善量集計と成功率を一括算出するスクリプト
 
 ---
@@ -203,8 +217,8 @@ Integrating LLMs into scientific data visualization represents a new frontier in
 
 # 🎉 News
 
--   March 7, 2024: Releasing the MatPlotAgent, an innovative and model-agnostic framework designed to revolutionize scientific data visualization by automating tasks with advanced LLMs. 🎊
--   March 7, 2024: Releasing MatPlotBench, a comprehensive and meticulously curated benchmark that sets a new standard for evaluating AI-driven visualization tools. 🌟
+- March 7, 2024: Releasing the MatPlotAgent, an innovative and model-agnostic framework designed to revolutionize scientific data visualization by automating tasks with advanced LLMs. 🎊
+- March 7, 2024: Releasing MatPlotBench, a comprehensive and meticulously curated benchmark that sets a new standard for evaluating AI-driven visualization tools. 🌟
 
 # ✨ MatPlotAgent
 
@@ -229,9 +243,9 @@ A high-quality benchmark of 100 human-verified test cases alongside a scoring ap
 
 This project opensources the following components to foster further research and development in the field of scientific data visualization:
 
--   **Benchmark Data (MatPlotBench)**: A meticulously crafted benchmark to quantitatively evaluate data visualization approaches.
--   **Evaluation Pipeline**: Utilizes GPT-4V for automatic evaluation, offering a reliable metric that correlates strongly with human judgment.
--   **MatPlotAgent Framework**: The entire codebase for the MatPlotAgent framework is available, encouraging adaptation and improvement by the community.
+- **Benchmark Data (MatPlotBench)**: A meticulously crafted benchmark to quantitatively evaluate data visualization approaches.
+- **Evaluation Pipeline**: Utilizes GPT-4V for automatic evaluation, offering a reliable metric that correlates strongly with human judgment.
+- **MatPlotAgent Framework**: The entire codebase for the MatPlotAgent framework is available, encouraging adaptation and improvement by the community.
 
 <!-- #TODO
 [Instructions on how to access and use the benchmark data, evaluation pipeline, and the MatPlotAgent framework.] -->
@@ -258,10 +272,10 @@ This repository is now configurable to run with Azure-hosted models without chan
 
 1. Put your credentials in `.env` at repo root (python-dotenv is used automatically):
 
--   For Azure OpenAI (deployment-based):
+- For Azure OpenAI (deployment-based):
 
-    -   `AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/`
-    -   `AZURE_OPENAI_API_KEY=***`
+  - `AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/`
+  - `AZURE_OPENAI_API_KEY=***`
     -   `AZURE_OPENAI_API_VERSION=2025-04-01-preview` (or your supported version)
 
 -   For Azure AI Inference (serverless, multi-provider models like o3, DeepSeek, Grok, etc.):

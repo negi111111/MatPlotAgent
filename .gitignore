@@ -2,3 +2,12 @@
 *.log
 __pycache__/
 workspace/
+compare_workspace/
+runs/
+
+# Local IDE / OS artifacts
+.DS_Store
+.vscode/
+
+# Model weights or large checkpoints (user should manage separately)
+models/checkpoints/
