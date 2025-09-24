@@ -78,8 +78,9 @@ class PlotAgent():
         result = self.generate(query, model_type=model_type, query_type=query_type, file_name=file_name)
         while try_count < 4:
             
-            if not isinstance(result, str):  # 如果返回的不是字符串，那么就是出错了
-                return 'TOO LONG FOR MODEL', code
+            if not isinstance(result, str):  # モデル失敗 (None など)
+                safe_code = ''
+                return 'MODEL CALL FAILED', safe_code
             if model_type != 'gpt-4':
                 code = self.get_code(result)
                 if code.strip() == '':
@@ -91,6 +92,43 @@ class PlotAgent():
             else:
                 code = self.get_code(result)
             self.chat_history.append({"role": "assistant", "content": result if result.strip() != '' else ''})
+
+            # Banned library detection: if code uses disallowed libs, request regeneration
+            banned_patterns = [
+                r"import\s+seaborn",
+                r"from\s+seaborn\s+import",
+                r"import\s+plotly",
+                r"from\s+plotly\s+import",
+                r"import\s+altair",
+                r"from\s+altair\s+import",
+                r"import\s+bokeh",
+                r"from\s+bokeh\s+import",
+                r"hvplot",
+                r"holoviews",
+                r"pandas\.DataFrame\.plot\(",
+            ]
+            banned_hit = False
+            for pat in banned_patterns:
+                if re.search(pat, code):
+                    banned_hit = True
+                    break
+            if banned_hit:
+                reinforce_msg = (
+                    "前回のコードに禁止ライブラリ (seaborn/plotly/bokeh/altair/hvplot/holoviews/DataFrame.plot) が含まれていました。"
+                    "Matplotlib のみを使用し、スタイルや色設定も Matplotlib の API だけで再実装してください。"
+                    "plt.show() は使わず、必ず plt.savefig('" + image_file + "') を最後に呼び出してください。"
+                    "完全な修正版コードのみを再掲してください。"
+                )
+                self.chat_history.append({
+                    "role": "user",
+                    "content": reinforce_msg,
+                })
+                try_count += 1
+                result = completion_with_backoff(self.chat_history, model_type=model_type)
+                continue
+
+            # sanitize code for headless execution: no interactive windows, ensure backend and save
+            code = self._sanitize_code_for_headless(code, image_file)
 
 
             file_name = f'code_action_{model_type}_{query_type}_{try_count}.py'
@@ -162,6 +200,8 @@ class PlotAgent():
             code = self.get_code(result)
 
 
+        # sanitize code and write
+        code = self._sanitize_code_for_headless(code, file_name)
         file_name = f'code_action_{model_type}_{query_type}_0.py'
         with open(os.path.join(self.workspace, file_name), 'w') as f:
             f.write(code)
@@ -190,8 +230,48 @@ class PlotAgent():
         else:
             code = self.get_code(result)
 
+        # sanitize code and write
+        code = self._sanitize_code_for_headless(code, file_name)
         file_name = f'code_action_{model_type}_{query_type}_0.py'
         with open(os.path.join(self.workspace, file_name), 'w') as f:
             f.write(code)
         log = run_code(self.workspace, file_name)
         return log, code
+
+    def _sanitize_code_for_headless(self, code: str, image_file: str) -> str:
+        """Ensure generated code does not attempt to open GUI windows and saves output.
+
+        - Force non-interactive backend (Agg)
+        - Remove plt.show()/figure.show() calls
+        - If no savefig present, append a savefig with the target image file
+        """
+        try:
+            # ensure backend before pyplot import if possible
+            if 'matplotlib.use(' not in code:
+                code = "import matplotlib\nmatplotlib.use('Agg')\n" + code
+
+            # comment out any lingering forbidden plotting imports (defensive)
+            code = re.sub(r'^(from|import)\s+seaborn.*$', r'# \g<0>  # removed (seaborn forbidden)', code, flags=re.MULTILINE)
+            code = re.sub(r'^(from|import)\s+plotly.*$', r'# \g<0>  # removed (plotly forbidden)', code, flags=re.MULTILINE)
+            code = re.sub(r'^(from|import)\s+altair.*$', r'# \g<0>  # removed (altair forbidden)', code, flags=re.MULTILINE)
+            code = re.sub(r'^(from|import)\s+bokeh.*$', r'# \g<0>  # removed (bokeh forbidden)', code, flags=re.MULTILINE)
+            code = re.sub(r'^.*hvplot.*$', r'# \g<0>  # removed (hvplot forbidden)', code, flags=re.MULTILINE)
+            code = re.sub(r'^.*holoviews.*$', r'# \g<0>  # removed (holoviews forbidden)', code, flags=re.MULTILINE)
+            code = re.sub(r'pandas\.DataFrame\.plot\(', '# DataFrame.plot removed; rewrite below with pure Matplotlib\n# pandas.DataFrame.plot(', code)
+
+            # strip plt.show(...) and any fig.show(...)
+            code = re.sub(r"plt\s*\.\s*show\s*\([^)]*\)\s*;?", "", code)
+            code = re.sub(r"([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*show\s*\([^)]*\)\s*;?", "", code)
+            code = re.sub(r"plt\s*\.\s*pause\s*\([^)]*\)\s*;?", "", code)
+            # Turn off interactive mode if turned on
+            code = re.sub(r"plt\s*\.\s*ion\s*\(\s*\)\s*", "plt.ioff()\n", code)
+
+            # ensure savefig
+            if image_file and 'savefig' not in code:
+                if 'import matplotlib.pyplot as plt' not in code:
+                    code += "\nimport matplotlib.pyplot as plt"
+                code += f"\nplt.savefig('{image_file}')\n"
+        except Exception:
+            # Fail-safe: return original code if anything goes wrong
+            return code
+        return code

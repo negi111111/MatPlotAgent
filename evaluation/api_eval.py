@@ -9,8 +9,9 @@ import sys
 sys.path.insert(0, sys.path[0]+"/../")
 from agents.utils import is_run_code_success
 from agents.plot_agent import PlotAgent
-from openai import OpenAI
-from agents.config.openai import API_KEY, BASE_URL, temperature
+from agents.config.openai import temperature, create_client, call_chat_completions
+EVAL_TEXT_MODEL = os.getenv("EVAL_TEXT_MODEL", "gpt-4o-mini")
+EVAL_VISION_MODEL = os.getenv("EVAL_VISION_MODEL", "gpt-4o-mini")
 
 
 def encode_image(image_path):
@@ -24,12 +25,11 @@ def gpt_4_evaluate(code, query, image):
     else:
         executable = 'True'
 
-    client = OpenAI(
-        api_key=API_KEY,
-        base_url=BASE_URL, )
+    client = create_client()
 
-    response = client.chat.completions.create(
-        model="gpt-4",
+    response = call_chat_completions(
+        client,
+        model=EVAL_TEXT_MODEL,
         temperature=0.2,
         messages=[
             {
@@ -61,15 +61,13 @@ For example [FINAL SCORE]: 40. A final score must be generated.''',
                 ],
             }
         ],
-        max_tokens=1000,
+        max_new_tokens=1000,
     )
     return response.choices[0].message
 
 
 def gpt_4v_evaluate(ground_truth, image, rollback):
-    client = OpenAI(
-        api_key=API_KEY,
-        base_url=BASE_URL,)
+    client = create_client()
     if not os.path.exists(f'{image}'):
         if os.path.exists(f'{rollback}'):
             base64_image1 = encode_image(f"./benchmark_data/ground_truth/{ground_truth}")
@@ -82,10 +80,11 @@ def gpt_4v_evaluate(ground_truth, image, rollback):
         base64_image1 = encode_image(f"./benchmark_data/ground_truth/{ground_truth}")
         base64_image2 = encode_image(f"{image}")
 
-    response = client.chat.completions.create(
-      model="gpt-4-vision-preview",
-      temperature=0.2,
-      messages=[
+    response = call_chat_completions(
+        client,
+        model=EVAL_VISION_MODEL,
+        temperature=0.2,
+        messages=[
         {
           "role": "user",
           "content": [
@@ -120,9 +119,9 @@ def gpt_4v_evaluate(ground_truth, image, rollback):
             },
           ],
         }
-      ],
-      max_tokens=1000,
-    )
+                ],
+                max_new_tokens=1000,
+        )
     return response.choices[0].message
 
 

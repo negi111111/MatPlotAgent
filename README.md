@@ -77,6 +77,45 @@ If you're using the open-source model, please download the model to your local m
 
 If you're using GPT-3.5 or GPT-4, please update your `API_KEY` in `agents/config/openai.py`.
 
+## Use with Azure (OpenAI / AI Inference)
+
+This repository is now configurable to run with Azure-hosted models without changing code.
+
+1) Put your credentials in `.env` at repo root (python-dotenv is used automatically):
+
+- For Azure OpenAI (deployment-based):
+  - AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/
+  - AZURE_OPENAI_API_KEY=***
+  - AZURE_OPENAI_API_VERSION=2025-04-01-preview (or your supported version)
+
+- For Azure AI Inference (serverless, multi-provider models like o3, DeepSeek, Grok, etc.):
+  - AZURE_INFERENCE_ENDPOINT=https://<your-endpoint>/openai/deployments/<deployment>/extensions
+  - AZURE_INFERENCE_API_KEY=***
+
+The code auto-detects in this order:
+1. AZURE_INFERENCE_* (AI Inference)
+2. AZURE_OPENAI_* (Azure OpenAI)
+3. OPENAI_API_KEY + optional OPENAI_BASE_URL (api.openai.com)
+
+2) Model names
+
+- For Azure OpenAI, pass the deployment name as `model_type` (e.g., `--model_type o4-mini` if your deployment is named `o4-mini`).
+- For Azure AI Inference, pass the model id. Confirm the model is enabled on your endpoint. Verified families include:
+  - OpenAI: `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-4o`, `gpt-4o-mini`
+  - o-series: `o3`, `o3-mini`, `o3-pro`, `o4-mini`
+  - DeepSeek: `DeepSeek-R1-0528`
+  - Grok: `grok-3`, `grok-3-mini`
+
+3) Vision models
+
+- By default, evaluation uses `EVAL_TEXT_MODEL=gpt-4` and `EVAL_VISION_MODEL=gpt-4-vision-preview`.
+- Override via `.env` if needed, e.g., `EVAL_TEXT_MODEL=o3`, `EVAL_VISION_MODEL=gpt-4o`.
+
+No code changes are required once `.env` is configured; the client is created dynamically.
+
+Notes:
+- Some reasoning models (o-series, DeepSeek R1, Grok) do not accept `temperature`. The framework automatically omits it for those models and uses the right token parameter (`max_completion_tokens` for o-series).
+
 ### Running OpenAI-Compatible Server
 
 If you're utilizing GPT-3.5 or GPT-4, you can skip this section.

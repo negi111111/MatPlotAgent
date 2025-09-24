@@ -25,4 +25,10 @@ class QueryExpansionAgent():
         messages.append({"role": "user", "content": fill_in_placeholders(EXPERT_USER_PROMPT, information)})
         expanded_query_instruction = completion_with_log(messages, self.model_type)
 
+        # Guard: if model call failed and returned an exception object, fall back to original instruction
+        if not isinstance(expanded_query_instruction, str):
+            # choose appropriate original instruction
+            fallback_text = self.expert_ins if query_type == 'expert' else self.simple_ins
+            # Make it explicit in logs by appending a note (non-user visible unless later logged)
+            return fallback_text
         return expanded_query_instruction

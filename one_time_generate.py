@@ -1,20 +1,14 @@
 import json
-import re
 
 from tqdm import tqdm
-from agents.query_expansion_agent import QueryExpansionAgent
 from agents.plot_agent import PlotAgent
-from agents.visual_refine_agent import VisualRefineAgent
 import logging
 import os
-import shutil
-import glob
-import sys
-from agents.utils import is_run_code_success, run_code, get_code
+from agents.utils import is_run_code_success, run_code
 import argparse
 
 
-def mainworkflow(expert_instruction, simple_instruction, workspace='./workspace',model_type='gpt-3.5-turbo',no_sysprompt=False):
+def mainworkflow(_expert_unused, simple_instruction, workspace='./workspace', model_type='gpt-3.5-turbo', no_sysprompt=False):
 
     
     config = {'workspace': workspace}
@@ -31,7 +25,7 @@ def mainworkflow(expert_instruction, simple_instruction, workspace='./workspace'
 
 def check_refined_code_executable(refined_code, model_type, query_type, workspace):
     file_name = f'code_action_{model_type}_{query_type}_refined.py'
-    with open(os.path.join(workspace, file_name), 'w') as f1:
+    with open(os.path.join(workspace, file_name), 'w', encoding='utf-8') as f1:
         f1.write(refined_code)
     log = run_code(workspace, file_name)
 
@@ -41,14 +35,17 @@ def check_refined_code_executable(refined_code, model_type, query_type, workspac
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--workspace', type=str, default='./workspace')
-    parser.add_argument('--model_type', type=str, default='gpt-3.5-turbo')
+    parser.add_argument('--model_type', type=str, default='gpt-4o-mini')
     parser.add_argument('--no_sysprompt',action='store_true')
     args = parser.parse_args()
 
     workspace_base = args.workspace
-    data_path = '/home/zhoupeng/project/LLM/agent/plotagent/benchmark/newPlotAgent/plot-agent/benchmark_data/'
-    # open the json file 
-    data = json.load(open(f'{data_path}/benchmark_instructions.json'))
+    # Resolve benchmark_data directory relative to this file
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(script_dir, 'benchmark_data')
+    # open the json file
+    with open(os.path.join(data_path, 'benchmark_instructions.json'), 'r', encoding='utf-8') as f:
+        data = json.load(f)
     
     for item in tqdm(data):
         novice_instruction = item['simple_instruction']
@@ -58,10 +55,10 @@ if __name__ == "__main__":
 
         # Check if the directory already exists
         if not os.path.exists(directory_path):
-            # If it doesn't exist, create the directory
-            os.mkdir(directory_path)
+            # If it doesn't exist, create the directory (including parent workspace folder)
+            os.makedirs(directory_path, exist_ok=True)
             print(f"Directory '{directory_path}' created successfully.")
-            input_path = f'{data_path}/data/{example_id}'
+            input_path = os.path.join(data_path, 'data', str(example_id))
             if os.path.exists(input_path):
                 #全部copy到f"Directory '{directory_path}'
                 os.system(f'cp -r {input_path}/* {directory_path}')

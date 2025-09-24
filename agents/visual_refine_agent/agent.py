@@ -6,6 +6,7 @@ import re
 from .prompt import SYSTEM_PROMPT, USER_PROMPT, ERROR_PROMPT
 from agents.openai_chatComplete import  completion_for_4v
 from agents.utils import fill_in_placeholders
+EVAL_VISION_MODEL = os.getenv("EVAL_VISION_MODEL", "gpt-4o-mini")
 
 
 
@@ -32,6 +33,18 @@ class VisualRefineAgent:
         self.query = query
         self.workspace = config['workspace']
 
+    def _supports_vision(self, model_name: str) -> bool:
+        if not model_name:
+            return False
+        m = model_name.strip().lower()
+        # Heuristics: 4o family and omni/vision-capable models
+        return (
+            '4o' in m or
+            'omni' in m or
+            'vision' in m or
+            m.startswith('gpt-4.1')
+        )
+
     def run(self, model_type, query_type, file_name):
         plot = os.path.join(self.workspace, self.plot_file)
         base64_image1 = encode_image(f"{plot}")
@@ -44,16 +57,22 @@ class VisualRefineAgent:
 
         messages = []
         messages.append({"role": "system", "content": fill_in_placeholders(SYSTEM_PROMPT, information)})
-        messages.append({"role": "user",
-                        "content": [fill_in_placeholders(USER_PROMPT, information),
-                                    {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{base64_image1}"
-                                    }
-                                    },
-                                    ]
-                        })
-        visual_feedback = completion_for_4v(messages, 'gpt-4-vision-preview')
-
+        messages.append({
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": fill_in_placeholders(USER_PROMPT, information),
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image1}"
+                    }
+                },
+            ]
+        })
+        # Use model if it supports vision; otherwise fall back to EVAL_VISION_MODEL
+        chosen_model = model_type if self._supports_vision(model_type) else EVAL_VISION_MODEL
+        visual_feedback = completion_for_4v(messages, chosen_model)
         return visual_feedback
