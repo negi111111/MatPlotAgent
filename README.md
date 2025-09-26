@@ -60,8 +60,6 @@
 -   `simple_instruction` と `expert_instruction` の概念差を README 末尾に解説
 -   追加予定（未実装）：失敗プレースホルダ画像、JSONL ログ、統計集計スクリプト
 
-これらは論文の再現実験やモデル間比較の「透明性確保（No Silent Fallback）」を最優先にした調整です。詳細な英語の技術的説明は下部 “Recent Architectural / Behavioral Changes” セクションを参照してください。
-
 ---
 
 ## �🛠 最近の技術的変更点 (研究用途向け)
@@ -193,17 +191,6 @@ python compare_models.py --dry_run --workspace ./compare_workspace
 | `novice_final.png` が過去バージョンで欠損    | refine 途中中断                   | 最新版で自動補填動作を利用                        |
 | 禁止ライブラリが残る                         | 検出正規表現がマッチせず          | パターンを再確認（import 行修正）                 |
 | OperationNotSupported (o3-pro)               | エンドポイント/デプロイ設定不整合 | Azure Inference 側設定確認                        |
-
-## 🔬 `simple_instruction` と `expert_instruction` の違い
-
-`simple_instruction` はコンパクトで曖昧さを含む目標、`expert_instruction` は手順を段階列挙した決定的ゴール記述です。両者を使い分けることで創造性要求と指示忠実度の差分評価が可能です。現状パイプラインでは主に simple を novice 生成に用い、将来的な忠実度検証のため expert を保持しています。
-
-## 🔮 今後追加を検討している拡張
-
-- 失敗時プレースホルダ PNG（モデル名＋エラー短縮表示）
-- 実行ログ JSONL (`model, example_id, phase, status, error`)
-- 同一失敗パターン連続時の早期打ち切りヒューリスティック
--   改善量集計と成功率を一括算出するスクリプト
 
 ---
 
