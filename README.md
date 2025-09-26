@@ -13,7 +13,6 @@
     -   [再現性メモ](#8-再現性メモ)
     -   [モデル追加手順](#9-モデル追加手順)
     -   [トラブルシューティング](#10-トラブルシューティング早見表)
--   [`simple_instruction` と `expert_instruction`](#-simple_instruction-と-expert_instruction-の違い)
 -   [今後の拡張予定](#-今後追加を検討している拡張)
 -   [� Introduction](#-introduction)
 -   [🎉 News](#-news)
